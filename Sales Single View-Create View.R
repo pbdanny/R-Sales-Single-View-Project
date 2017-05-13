@@ -1,6 +1,6 @@
 library(dplyr)
 
-load(file = "Rcvd12-16.RData")
+load(file = "Rcvd12-1704.RData")
 
 # Function convert year and month to 12*year + month
 yyyymm_to_num <- function(ym) {
@@ -78,7 +78,6 @@ rm(list = c("l.tt", "o"))  # Clear unused varibles
 last_1mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 1
 last_3mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 3
 last_6mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 6
-last_12mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 12
 
 last_mth_tt <- agent_mth_tt %>%
   filter(yyyymm_num == last_1mth_num) %>%
@@ -114,4 +113,30 @@ agent_s_view <- active_mth %>%
   left_join(agent_consec_mth, by = "Agent_Code") %>%
   left_join(agent_velocity_tt, by = "Agent_Code")
 
-save(list = c("agent_mth_tt", "agent_s_view"), file = "SingleView12-16.RData")
+save(list = c("agent_mth_tt", "agent_s_view"), file = "SingleView12-1704.RData")
+
+# Add agent data ----
+library(readxl)
+agent_data <- read_xls("/Users/Danny/Share Win7/Sales Single View Project/Data all type team/DataAllType.xls")
+detach(package:readxl)
+agent_data$age <- as.integer(format(Sys.Date(), '%Y')) - as.integer(format(agent_data$Birthday, '%Y'))
+agent_data$Birthday <- NULL
+agent_data$Thai_Name <- NULL
+agent_data$Thai_Surname <- NULL
+agent_data$Email_address <- NULL
+agent_data$ID_Card <- NULL
+
+agent_s_view <- agent_s_view %>%
+  left_join(agent_data, by = "Agent_Code")
+
+rm(agent_data)
+save(list = c("agent_mth_tt", "agent_s_view"), file = "SingleView12-1704.RData")
+
+d <- da %>%
+  select(Agent_Code, Source_Code) %>%
+  distinct(Agent_Code, Source_Code)
+
+agent_s_view <- agent_s_view %>%
+  left_join(d, by = "Agent_Code")
+
+save(list = c("agent_mth_tt", "agent_s_view", "da"), file = "SingleView12-1704.RData")

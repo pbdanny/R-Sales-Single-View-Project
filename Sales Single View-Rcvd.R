@@ -30,3 +30,11 @@ load(file = "Rcvd12-16.RData")
 ag <- aggregate(da['Agent_Code'], by = c(da['system_date'], da['Product']), FUN = length)
 ag2 <- tapply(da$Agent_Code, INDEX = c(da$Product, da$system_date), FUN = length)
 plot(x = ag$system_date, y = ag$Agent_Code, col = as.factor(ag$Product))
+
+# Load 201704 rcvd data into da
+d3 <- read.delim(file = "rcvd_1704.txt", stringsAsFactors = FALSE)
+d3$system_date <- as.Date(d3$system_date, format = "%d/%m/%Y")
+load(file = "Rcvd12-16.RData")
+da <- rbind(da, d3)
+rm(d3)
+save(da, file = "Rcvd12-1704.RData")

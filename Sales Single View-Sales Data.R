@@ -53,3 +53,4 @@ sales2016$Title <- NULL
 df <- rbind(sales2013, rbind(sales2014, rbind(sales2015, sales2016)))
 
 save(salesAll, file = "salesAllData2013_2016.RData")
+
