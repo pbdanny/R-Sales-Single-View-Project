@@ -5,8 +5,8 @@ load(file = "Rcvd12-16.RData")
 # Function convert year and month to 12*year + month
 yyyymm_to_num <- function(ym) {
   y <- as.integer(substr(ym, 1, 4))
-  m <- as.integer(format(ym, 5, 6))
-  num <- 12*y+m
+  m <- as.integer(substr(ym, 5, 6))
+  num <- (12*y)+m
   return(num)
 }
 
@@ -44,40 +44,74 @@ agent_mth_tt <- da %>%
   filter(!(is.na(Agent_Code) | Agent_Code == "")) %>%
   mutate(yyyymm = format(system_date, "%Y%m")) %>%
   group_by(Agent_Code, yyyymm) %>%
-  summarise(tt_rcvd = n())
+  summarise(tt_rcvd = n()) %>%
+  mutate(yyyymm_num = yyyymm_to_num(yyyymm))
 
-# create single view of tt rcvd features
+# Create single view of tt rcvd features ----
 l.tt <- split(agent_mth_tt, agent_mth_tt$Agent_Code)  # split by Agent_Code
 o <- lapply(l.tt, FUN = s_view_tt)  # apply s_view function
-agent_s_view_tt <- do.call(rbind, lapply(o, data.frame, stringsAsFactors = FALSE))  # Convert list of data frame to single dataframe
-agent_s_view_tt$Agent_Code <- rownames(agent_s_view_tt)   # Re-create Agent_Codd from rownames
-rownames(agent_s_view_tt) <- NULL  # Reset rownames
+agent_range_tt <- do.call(rbind, lapply(o, data.frame, stringsAsFactors = FALSE))  # Convert list of data frame to single dataframe
+agent_range_tt$Agent_Code <- rownames(agent_range_tt)   # Re-create Agent_Codd from rownames
+rownames(agent_range_tt) <- NULL  # Reset rownames
+rm(list = c("l.tt", "o"))  # Clear unused varibles
 
-hist(agent_s_view_tt[,5])
+# Create frequency features ----
+last_12mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 12
 
-# Create velocity and frequency features ---- 
-agent_s_view_tt_2 <- agent_mth_tt %>%
+active_mth <- agent_mth_tt %>%
   group_by(Agent_Code) %>%
-  summarise(activ_mth = sum(tt_rcvd > 0), 
-            lastyr_activ_mth = sum(substr(yyyymm, 1, 4) == "2016" & tt_rcvd > 0)
+  summarise(tt_activ_mth = sum(tt_rcvd > 0), 
+            last12mth_activ_mth = sum((yyyymm_num >= last_12mth_num) & tt_rcvd > 0)
   )
+
 # Create max consecutive mth -----
 l.tt <- split(agent_mth_tt, agent_mth_tt$Agent_Code)  # split by Agent_Code
 o <- lapply(l.tt, FUN = find_consec_mth)  # apply find_consec_function
-agent_s_view_tt_3 <- do.call(rbind, lapply(o, data.frame, stringsAsFactors = FALSE))  # Convert list of data frame to single dataframe
-agent_s_view_tt_3$Agent_Code <- rownames(agent_s_view_tt_3)   # Re-create Agent_Codd from rownames
-rownames(agent_s_view_tt_3) <- NULL  # Reset rownames
-colnames(agent_s_view_tt_3) <- c("max_consec_mth", "Agent_Code")
+agent_consec_mth <- do.call(rbind, lapply(o, data.frame, stringsAsFactors = FALSE))  # Convert list of data frame to single dataframe
+agent_consec_mth$Agent_Code <- rownames(agent_consec_mth)   # Re-create Agent_Codd from rownames
+rownames(agent_consec_mth) <- NULL  # Reset rownames
+colnames(agent_consec_mth) <- c("max_consec_mth", "Agent_Code")
+rm(list = c("l.tt", "o"))  # Clear unused varibles
 
 
-# agent_mth_cc <- da %>%
-#   filter(!(is.na(Agent_Code) | Agent_Code == "")) %>%
-#   mutate(yyyymm = format(system_date, "%Y%m")) %>%
-#   group_by(Agent_Code, yyyymm) %>%
-#   summarise(tt_cc = sum(Product == "CC"))
-# 
-# agent_mth_rl <- da %>%
-#   filter(!(is.na(Agent_Code) | Agent_Code == "")) %>%
-#   mutate(yyyymm = format(system_date, "%Y%m")) %>%
-#   group_by(Agent_Code, yyyymm) %>%
-#   summarise(tt_rl = sum(Product == "REV"))
+# Create velocity rcvd ----
+last_1mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 1
+last_3mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 3
+last_6mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 6
+last_12mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 12
+
+last_mth_tt <- agent_mth_tt %>%
+  filter(yyyymm_num == last_1mth_num) %>%
+  summarise(last1mth_tt = sum(tt_rcvd))
+
+last_3mth_tt <- agent_mth_tt %>%
+  filter(yyyymm_num >= last_3mth_num) %>%
+  summarise(last3mth_tt = sum(tt_rcvd))
+
+last_6mth_tt <- agent_mth_tt %>%
+  filter(yyyymm_num >= last_6mth_num) %>%
+  summarise(last6mth_tt = sum(tt_rcvd))
+
+last_12mth_tt <- agent_mth_tt %>%
+  filter(yyyymm_num >= last_12mth_num) %>%
+  summarise(last12mth_tt = sum(tt_rcvd))
+
+agent_velocity_tt <- da %>%
+  select(Agent_Code) %>%
+  distinct(Agent_Code) %>%
+  left_join(last_mth_tt, by = "Agent_Code") %>%
+  left_join(last_3mth_tt, by = "Agent_Code") %>%
+  left_join(last_6mth_tt, by = "Agent_Code") %>%
+  left_join(last_12mth_tt, by = "Agent_Code")
+
+rm(list = c("last_mth_tt", "last_3mth_tt", "last_6mth_tt", "last_12mth_tt"))
+rm(list = c("last_1mth_num", "last_3mth_num", "last_6mth_num", "last_12mth_num"))
+
+# Next command ----
+
+agent_s_view <- active_mth %>%
+  left_join(agent_range_tt, by = "Agent_Code") %>%
+  left_join(agent_consec_mth, by = "Agent_Code") %>%
+  left_join(agent_velocity_tt, by = "Agent_Code")
+
+save(list = c("agent_mth_tt", "agent_s_view"), file = "SingleView12-16.RData")
