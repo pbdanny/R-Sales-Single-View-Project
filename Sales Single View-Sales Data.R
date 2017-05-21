@@ -54,3 +54,8 @@ df <- rbind(sales2013, rbind(sales2014, rbind(sales2015, sales2016)))
 
 save(salesAll, file = "salesAllData2013_2016.RData")
 
+library(readxl)
+agent_data <- read_xls("/Users/Danny/Share Win7/Sales Single View Project/Data all type team/DataAllType.xls")
+detach(package:readxl)
+
+agent_data$age <- as.integer(format(Sys.Date(), '%Y')) - as.integer(format(agent_data$Birthday, '%Y'))

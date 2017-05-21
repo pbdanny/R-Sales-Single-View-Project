@@ -140,3 +140,4 @@ agent_s_view <- agent_s_view %>%
   left_join(d, by = "Agent_Code")
 
 save(list = c("agent_mth_tt", "agent_s_view", "da"), file = "SingleView12-1704.RData")
+load("SingleView12-1704.RData")
