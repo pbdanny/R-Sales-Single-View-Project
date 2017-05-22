@@ -29,10 +29,10 @@ find_consec_mth <- function(df) {
     }
   } # Output max consecutive m
   o.df <- data.frame('max_straight_mo' = max(o.li),
-                    'min_straight_mo' = min(o.li),
-                    'avg_straight_mo' = mean(o.li),
-                    'count_straight_time' = length(o.li)
-                    )
+                     'min_straight_mo' = min(o.li),
+                     'avg_straight_mo' = mean(o.li),
+                     'count_straight_time' = length(o.li)
+  )
   return(o.df)
 }
 
@@ -120,22 +120,23 @@ agent_velocity_tt <- da %>%
   mutate(last3mth_tt_rcvd_per_mth = last3mth_tt/last3mth_activ_mth) %>%
   mutate(last6mth_tt_rcvd_per_mth = last6mth_tt/last6mth_activ_mth) %>%
   mutate(last12mth_tt_rcvd_per_mth = last12mth_tt/last12mth_activ_mth)
-  
+
 rm(list = c("last_mth_tt", "last_3mth_tt", "last_6mth_tt", "last_12mth_tt"))
 rm(list = c("last_1mth_num", "last_3mth_num", "last_6mth_num", "last_12mth_num"))
 
 # Next command ----
 
-agent_s_view <- active_mth %>%
+agent_s_view <- agent_velocity_tt %>%
   left_join(agent_range_tt, by = "Agent_Code") %>%
-  left_join(agent_consec_mth, by = "Agent_Code") %>%
-  left_join(agent_velocity_tt, by = "Agent_Code")
+  left_join(agent_consec_mth, by = "Agent_Code")
 
 save(list = c("agent_mth_tt", "agent_s_view"), file = "SingleView12-1704.RData")
 
 # Add agent data ----
+
 library(readxl)
-agent_data <- read_xls("/Users/Danny/Share Win7/Sales Single View Project/Data all type team/DataAllType.xls")
+agent_data <- read_xls("C:/Users/Thanakrit.B/Downloads/DataAllType.xls")
+# agent_data <- read_xls("/Users/Danny/Share Win7/Sales Single View Project/Data all type team/DataAllType.xls")
 detach(package:readxl)
 agent_data$age <- as.integer(format(Sys.Date(), '%Y')) - as.integer(format(agent_data$Birthday, '%Y'))
 agent_data$Birthday <- NULL
@@ -162,7 +163,8 @@ save(list = c("agent_mth_tt", "agent_s_view", "da"), file = "SingleView12-1704.R
 load("SingleView12-1704.RData")
 
 # Read-in opendate , AMSup, AMSupName, TL_Code, Agent, Status, Open_date, ZipCode, Source Code
-os_agent <- read.delim(file = "./Data all type team/DataAllTypeTeam201704.txt", stringsAsFactors = FALSE)
+os_agent <- read.delim(file = "C:/Users/Thanakrit.B/Documents/DataAllTypeTeam_201704.txt", stringsAsFactors = FALSE)
+#  os_agent <- read.delim(file = "./Data all type team/DataAllTypeTeam201704.txt", stringsAsFactors = FALSE)
 os_agent$Agent_Code <- as.character(os_agent$Agent_Code)
 
 # Correct OGS data group from tl code to sales code
