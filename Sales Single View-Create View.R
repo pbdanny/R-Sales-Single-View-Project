@@ -27,8 +27,13 @@ find_consec_mth <- function(df) {
     } else {  # For looping through the last obs
       o.li <- c(o.li, m)  # Store consecutive m
     }
-  }
-  o <- max(o.li)  # Output max consecutive m
+  } # Output max consecutive m
+  o.df <- data.frame('max_straight_mo' = max(o.li),
+                    'min_straight_mo' = min(o.li),
+                    'avg_straight_mo' = mean(o.li),
+                    'count_straight_time' = length(o.li)
+                    )
+  return(o.df)
 }
 
 # Function to create 5 features from tt rcvd
@@ -55,29 +60,31 @@ agent_range_tt$Agent_Code <- rownames(agent_range_tt)   # Re-create Agent_Codd f
 rownames(agent_range_tt) <- NULL  # Reset rownames
 rm(list = c("l.tt", "o"))  # Clear unused varibles
 
-# Create frequency features ----
-last_12mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 12
-
-active_mth <- agent_mth_tt %>%
-  group_by(Agent_Code) %>%
-  summarise(tt_activ_mth = sum(tt_rcvd > 0), 
-            last12mth_activ_mth = sum((yyyymm_num >= last_12mth_num) & tt_rcvd > 0)
-  )
-
 # Create max consecutive mth -----
 l.tt <- split(agent_mth_tt, agent_mth_tt$Agent_Code)  # split by Agent_Code
 o <- lapply(l.tt, FUN = find_consec_mth)  # apply find_consec_function
 agent_consec_mth <- do.call(rbind, lapply(o, data.frame, stringsAsFactors = FALSE))  # Convert list of data frame to single dataframe
 agent_consec_mth$Agent_Code <- rownames(agent_consec_mth)   # Re-create Agent_Codd from rownames
 rownames(agent_consec_mth) <- NULL  # Reset rownames
-colnames(agent_consec_mth) <- c("max_consec_mth", "Agent_Code")
 rm(list = c("l.tt", "o"))  # Clear unused varibles
 
 
-# Create velocity rcvd ----
+# Create frequency features ----
 last_1mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 1
 last_3mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 3
 last_6mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 6
+last_12mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 12
+
+active_mth <- agent_mth_tt %>%
+  group_by(Agent_Code) %>%
+  summarise(tt_activ_mth = sum(tt_rcvd > 0), 
+            last1mth_activ_mth = sum((yyyymm_num >= last_1mth_num) & tt_rcvd > 0),
+            last3mth_activ_mth = sum((yyyymm_num >= last_3mth_num) & tt_rcvd > 0),
+            last6mth_activ_mth = sum((yyyymm_num >= last_6mth_num) & tt_rcvd > 0),
+            last12mth_activ_mth = sum((yyyymm_num >= last_12mth_num) & tt_rcvd > 0)
+  )
+
+# Create velocity rcvd ----
 
 last_mth_tt <- agent_mth_tt %>%
   filter(yyyymm_num == last_1mth_num) %>%
@@ -101,8 +108,19 @@ agent_velocity_tt <- da %>%
   left_join(last_mth_tt, by = "Agent_Code") %>%
   left_join(last_3mth_tt, by = "Agent_Code") %>%
   left_join(last_6mth_tt, by = "Agent_Code") %>%
-  left_join(last_12mth_tt, by = "Agent_Code")
-
+  left_join(last_12mth_tt, by = "Agent_Code") %>%
+  left_join(active_mth, by = "Agent_Code") %>%
+  
+  # mutate(last1mth_tt = ifelse(is.na(last1mth_tt), 0, last1mth_tt)) %>%
+  # mutate(last3mth_tt = ifelse(is.na(last3mth_tt), 0, last3mth_tt)) %>%
+  # mutate(last6mth_tt = ifelse(is.na(last6mth_tt), 0, last6mth_tt)) %>%
+  # mutate(last12mth_tt = ifelse(is.na(last12mth_tt), 0, last12mth_tt)) %>%
+  
+  mutate(last1mth_tt_rcvd_per_mth = last1mth_tt/last1mth_activ_mth) %>%
+  mutate(last3mth_tt_rcvd_per_mth = last3mth_tt/last3mth_activ_mth) %>%
+  mutate(last6mth_tt_rcvd_per_mth = last6mth_tt/last6mth_activ_mth) %>%
+  mutate(last12mth_tt_rcvd_per_mth = last12mth_tt/last12mth_activ_mth)
+  
 rm(list = c("last_mth_tt", "last_3mth_tt", "last_6mth_tt", "last_12mth_tt"))
 rm(list = c("last_1mth_num", "last_3mth_num", "last_6mth_num", "last_12mth_num"))
 
@@ -131,6 +149,7 @@ agent_s_view <- agent_s_view %>%
 
 rm(agent_data)
 save(list = c("agent_mth_tt", "agent_s_view"), file = "SingleView12-1704.RData")
+load("SingleView12-1704.RData")
 
 d <- da %>%
   select(Agent_Code, Source_Code) %>%
@@ -141,3 +160,37 @@ agent_s_view <- agent_s_view %>%
 
 save(list = c("agent_mth_tt", "agent_s_view", "da"), file = "SingleView12-1704.RData")
 load("SingleView12-1704.RData")
+
+# Read-in opendate , AMSup, AMSupName, TL_Code, Agent, Status, Open_date, ZipCode, Source Code
+os_agent <- read.delim(file = "./Data all type team/DataAllTypeTeam201704.txt", stringsAsFactors = FALSE)
+os_agent$Agent_Code <- as.character(os_agent$Agent_Code)
+
+# Correct OGS data group from tl code to sales code
+os_agent[os_agent$Agent_Code == '5550083', 'Agent_Code'] <- '3111443'
+os_agent[os_agent$Agent_Code == '5550084', 'Agent_Code'] <- '3110056'
+os_agent[os_agent$Agent_Code == '5550093', 'Agent_Code'] <- '3113093'
+os_agent[os_agent$Agent_Code == '5550103', 'Agent_Code'] <- '3111442'
+os_agent[os_agent$Agent_Code == '5550107', 'Agent_Code'] <- '3110560'
+os_agent[os_agent$Agent_Code == '5550116', 'Agent_Code'] <- '3160159'
+os_agent[os_agent$Agent_Code == '5550109', 'Agent_Code'] <- '3151484'
+
+
+library(dplyr)
+os <- os_agent %>%
+  select(AMSup, AMSup.NAME, TL_Code, Agent_Code, Status, OpenDate, Zip_Code, Source_Code) %>%
+  mutate(open_date = as.Date(OpenDate, "%d/%m/%Y")) %>%
+  mutate(mob = yyyymm_to_num(format(Sys.Date(), "%Y%m")) - yyyymm_to_num(format(open_date, "%Y%m"))) %>%
+  select(-OpenDate) %>%
+  mutate(TL_Code = as.character(TL_Code)) %>%
+  mutate(Agent_Code = as.character(Agent_Code))
+
+os_agent_s_view <- agent_s_view %>%
+  select(-Zip_Code, -Source_Code) %>%
+  left_join(os, by = "Agent_Code") %>%
+  filter(!is.na(Source_Code)) %>%  # Excluse Souce_Code = NA
+  filter(Source_Code != 'AXA')  # AXA group have same Agent Code as BGM then exclude
+
+rm(os)
+
+# Save oss data in another files ----
+save(list = c("os_agent", "os_agent_s_view", "da"), file = "os_s_view_da.RData")
