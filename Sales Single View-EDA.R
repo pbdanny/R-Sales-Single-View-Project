@@ -2,7 +2,7 @@ load("os_s_view_da.RData")
 library(ggplot2)
 library(dplyr)
 library(gridExtra)
-
+library(tidyr)
 # EDA on each features ----
 # Month on book 
 ggplot(data = os_agent_s_view, aes(x = mob)) +
@@ -74,4 +74,23 @@ os_agent_s_view %>%
   ggplot() +
   geom_point(mapping = aes(x = mob, y = avg_straight_mo))
 
-# find mob error 106 code
+# Find switching profile of MOB > 24
+os_agent_s_view %>%
+  filter(mob >= 24 & Source_Code == 'OSS') %>%
+  ggplot() +
+  geom_freqpoly(mapping = aes(x = avg_straight_mo), color = 'blue', binwidth = 1) +
+  geom_freqpoly(mapping = aes(x = min_straight_mo), color = 'green',binwidth = 1) +
+  geom_freqpoly(mapping = aes(x = max_straight_mo), color = 'red', binwidth = 1) +
+  scale_x_continuous(breaks = seq(1, 150, 1))
+
+# Better plot us tidyr help create grouping filter large count straight time >= 4 times
+os_agent_s_view %>%
+  filter(mob >= 24 & Source_Code == 'OSS' & count_straight_time >= 4) %>%
+  select(Agent_Code, min_straight_mo, avg_straight_mo, max_straight_mo) %>%
+  gather(str_type, mo, max_straight_mo, min_straight_mo, avg_straight_mo) %>%
+  ggplot() +
+  geom_freqpoly(mapping = aes(x = mo, color = str_type), binwidth = 1) +
+  scale_x_continuous(breaks = seq(1, 150, 1)) +
+  coord_cartesian(xlim = c(0, 20))
+
+# Data show after exclude times submite to >= 4 avg_straight_mo show high concentration on range 2 - 4
