@@ -14,7 +14,7 @@ yyyymm_to_num <- function(ym) {
 find_consec_mth <- function(df) {
   df$ym <- yyyymm_to_num(df$yyyymm)  # Convert yyyymm to numeric ym
   df <- df[order(df$ym), ]  # Order by ym
-  o.li <- vector()  # vector of consecutive mo.
+  o.li <- vector()  # # Create blank vector for store consecutive mo. profile
   m <- 1  # Initialized first month <- 1
   for (i in seq_along(1:nrow(df))) {  # Loop through 
     if (i < nrow(df)) {  # Check it not the last obs. 
@@ -38,7 +38,7 @@ find_consec_mth <- function(df) {
 
 # Function to create 5 features from tt rcvd
 s_view_tt <- function(df){
-  q <- quantile(df$tt_rcvd, probs = c(0, 0.2, 0.5, 0.8, 1), type = 3)
+  q <- quantile(df$tt_rcvd, probs = c(0, 0.2, 0.5, 0.8, 1), type = 3) # quantile type 3, use nearest data point with no estimation
   q.df <- data.frame(as.list(q))
   colnames(q.df) <- c("min_tt", "p20_tt", "med_tt", "p80_tt", "max_tt")
   return(q.df)
@@ -52,7 +52,16 @@ agent_mth_tt <- da %>%
   summarise(tt_rcvd = n()) %>%
   mutate(yyyymm_num = yyyymm_to_num(yyyymm))
 
+## Use agent_mth_tt to create Recentcy view based
+
+agent_last_mth <- agent_mth_tt %>%
+  select(Agent_Code, yyyymm, yyyymm_num) %>%
+  group_by(Agent_Code) %>%
+  top_n(n = 1) %>%  # use top_n to find last (= max yyyymm_num)
+  mutate(recent_mth = yyyymm)
+
 # Create single view of tt rcvd features ----
+
 l.tt <- split(agent_mth_tt, agent_mth_tt$Agent_Code)  # split by Agent_Code
 o <- lapply(l.tt, FUN = s_view_tt)  # apply s_view function
 agent_range_tt <- do.call(rbind, lapply(o, data.frame, stringsAsFactors = FALSE))  # Convert list of data frame to single dataframe
@@ -69,7 +78,8 @@ rownames(agent_consec_mth) <- NULL  # Reset rownames
 rm(list = c("l.tt", "o"))  # Clear unused varibles
 
 
-# Create frequency features ----
+## Create frequency features ----
+# Use current system data and crate check point for each period
 last_1mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 1
 last_3mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 3
 last_6mth_num <- yyyymm_to_num(format(Sys.Date(), "%Y%m")) - 6
@@ -194,5 +204,11 @@ os_agent_s_view <- agent_s_view %>%
 
 rm(os)
 
+# Chaining dplyr and do the left join recent month data
+
+os_agent_s_view <- os_agent_s_view %>%
+  left_join(agent_last_mth %>% select(Agent_Code, recent_mth),
+            by = 'Agent_Code')
+  
 # Save oss data in another files ----
 save(list = c("os_agent", "os_agent_s_view", "da"), file = "os_s_view_da.RData")
