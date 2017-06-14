@@ -17,8 +17,9 @@ g2 <- ggplot(data = os_agent_s_view) +
 grid.arrange(g1, g2)
 
 # Overlapping mob by SourceCode
-ggplot(data = os_agent_s_view, aes(x = mob, fill = factor(substr(Source_Code, 1, 1)))) +
-  geom_histogram(alpha = 0.6, binwidth = 1, position = 'identity')
+ggplot(data = os_agent_s_view) +
+  geom_histogram(mapping = aes(x = mob, fill = factor(substr(Source_Code, 1, 1))),
+                 alpha = 0.6, binwidth = 1, position = 'identity')
 
 # Cut Source Code start with 'O', summarized count by mob and pointplot by size each mob 
 os_agent_s_view %>%
