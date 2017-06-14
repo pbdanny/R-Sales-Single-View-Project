@@ -5,8 +5,16 @@ library(gridExtra)
 library(tidyr)
 # EDA on each features ----
 # Month on book 
-ggplot(data = os_agent_s_view, aes(x = mob)) +
-  geom_histogram(fill = 'blue', alpha = 0.6, binwidth = 1)
+
+ggplot(data = os_agent_s_view) +
+  geom_histogram(mapping = aes(x = mob), fill = 'blue', binwidth = 1)
+
+g1 <- ggplot(data = os_agent_s_view, aes(x = mob)) +
+  geom_histogram(mapping = aes(x = mob), fill = 'blue', alpha = 0.6, binwidth = 12)
+g2 <- ggplot(data = os_agent_s_view) +
+  geom_histogram(mapping = aes(x = mob/12), fill = 'blue', alpha = 0.6, binwidth = 1)
+
+grid.arrange(g1, g2)
 
 # Overlapping mob by SourceCode
 ggplot(data = os_agent_s_view, aes(x = mob, fill = factor(substr(Source_Code, 1, 1)))) +
